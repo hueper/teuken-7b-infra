@@ -23,3 +23,28 @@ variable "hf_token" {
   type        = string
   sensitive   = true
 }
+
+# Endpoint Scheduler Variables
+variable "enable_endpoint_scheduler" {
+  description = "Enable automatic start/stop scheduling for the SageMaker endpoint"
+  type        = bool
+  default     = true
+}
+
+variable "endpoint_start_schedule" {
+  description = "Cron expression for starting the endpoint (UTC timezone)"
+  type        = string
+  default     = "cron(0 7 ? * MON-FRI *)" # 7:00 AM UTC Mon-Fri
+}
+
+variable "endpoint_stop_schedule" {
+  description = "Cron expression for stopping the endpoint (UTC timezone)"
+  type        = string
+  default     = "cron(0 18 ? * MON-FRI *)" # 6:00 PM UTC Mon-Fri
+}
+
+variable "lambda_runtime" {
+  description = "Python runtime version for Lambda functions"
+  type        = string
+  default     = "python3.12"
+}
