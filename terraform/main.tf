@@ -31,19 +31,48 @@ resource "aws_iam_role" "sagemaker_role" {
   })
 }
 
-resource "aws_iam_role_policy_attachment" "sagemaker_full" {
-  role       = aws_iam_role.sagemaker_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonSageMakerFullAccess"
-}
+# Least-privilege inline policy for SageMaker execution role
+resource "aws_iam_role_policy" "sagemaker_execution" {
+  name = "${var.project_name}-sagemaker-execution-policy"
+  role = aws_iam_role.sagemaker_role.id
 
-resource "aws_iam_role_policy_attachment" "s3_read" {
-  role       = aws_iam_role.sagemaker_role.name
-  policy_arn = "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ECRPullImage"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "arn:aws:ecr:${var.aws_region}:763104351884:repository/*"
+      },
+      {
+        Sid      = "ECRAuth"
+        Effect   = "Allow"
+        Action   = "ecr:GetAuthorizationToken"
+        Resource = "*"
+      },
+      {
+        Sid    = "CloudWatchLogs"
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogGroup",
+          "logs:CreateLogStream",
+          "logs:PutLogEvents",
+          "logs:DescribeLogStreams"
+        ]
+        Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/sagemaker/*"
+      }
+    ]
+  })
 }
 
 # Wait for IAM role propagation
 resource "time_sleep" "iam_propagation" {
-  depends_on      = [aws_iam_role_policy_attachment.sagemaker_full, aws_iam_role_policy_attachment.s3_read]
+  depends_on      = [aws_iam_role_policy.sagemaker_execution]
   create_duration = "30s"
 }
 
