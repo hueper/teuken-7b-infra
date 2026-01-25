@@ -15,6 +15,31 @@ provider "aws" {
   region = var.aws_region
 }
 
+# -----------------------------------------------------------------------------
+# Secrets Manager for HuggingFace Token
+# -----------------------------------------------------------------------------
+
+# Secret placeholder - value must be set manually in AWS Console or CLI
+# This ensures the token never appears in Terraform state
+resource "aws_secretsmanager_secret" "hf_token" {
+  name        = "${var.project_name}/hf-token"
+  description = "HuggingFace API token for gated model access. Set value manually."
+}
+
+# -----------------------------------------------------------------------------
+# ECR Repository for Custom Container
+# -----------------------------------------------------------------------------
+
+resource "aws_ecr_repository" "teuken_inference" {
+  name                 = "${var.project_name}-inference"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
 # IAM Role for SageMaker
 resource "aws_iam_role" "sagemaker_role" {
   name = "${var.project_name}-sagemaker-role"
@@ -47,7 +72,10 @@ resource "aws_iam_role_policy" "sagemaker_execution" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage"
         ]
-        Resource = "arn:aws:ecr:${var.aws_region}:763104351884:repository/*"
+        Resource = [
+          "arn:aws:ecr:${var.aws_region}:763104351884:repository/*",
+          aws_ecr_repository.teuken_inference.arn
+        ]
       },
       {
         Sid      = "ECRAuth"
@@ -65,6 +93,14 @@ resource "aws_iam_role_policy" "sagemaker_execution" {
           "logs:DescribeLogStreams"
         ]
         Resource = "arn:aws:logs:${var.aws_region}:*:log-group:/aws/sagemaker/*"
+      },
+      {
+        Sid    = "SecretsManagerRead"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue"
+        ]
+        Resource = aws_secretsmanager_secret.hf_token.arn
       }
     ]
   })
@@ -83,12 +119,14 @@ resource "aws_sagemaker_model" "teuken" {
   depends_on         = [time_sleep.iam_propagation]
 
   primary_container {
-    image = var.huggingface_inference_image
+    # Custom image that fetches HF_TOKEN from Secrets Manager at runtime
+    image = "${aws_ecr_repository.teuken_inference.repository_url}:latest"
     environment = {
-      HF_MODEL_ID             = "openGPT-X/Teuken-7B-instruct-v0.6"
-      HF_TOKEN                = var.hf_token
-      SM_NUM_GPUS             = "1"
-      TRUST_REMOTE_CODE       = "true"
+      HF_MODEL_ID              = "openGPT-X/Teuken-7B-instruct-v0.6"
+      HF_TOKEN_SECRET_ARN      = aws_secretsmanager_secret.hf_token.arn
+      AWS_REGION               = var.aws_region
+      SM_NUM_GPUS              = "1"
+      TRUST_REMOTE_CODE        = "true"
       HF_HUB_TRUST_REMOTE_CODE = "true"
     }
   }
@@ -116,4 +154,14 @@ resource "aws_sagemaker_endpoint" "teuken" {
 # Outputs
 output "endpoint_name" {
   value = aws_sagemaker_endpoint.teuken.name
+}
+
+output "hf_token_secret_arn" {
+  description = "ARN of the Secrets Manager secret containing the HuggingFace token"
+  value       = aws_secretsmanager_secret.hf_token.arn
+}
+
+output "ecr_repository_url" {
+  description = "ECR repository URL for the custom inference image"
+  value       = aws_ecr_repository.teuken_inference.repository_url
 }

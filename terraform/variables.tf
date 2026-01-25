@@ -18,11 +18,6 @@ variable "huggingface_inference_image" {
   default     = "763104351884.dkr.ecr.eu-west-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04"
 }
 
-variable "hf_token" {
-  description = "HuggingFace API token for gated model access"
-  type        = string
-  sensitive   = true
-}
 
 # Endpoint Scheduler Variables
 variable "enable_endpoint_scheduler" {
