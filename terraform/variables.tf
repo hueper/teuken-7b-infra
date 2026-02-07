@@ -1,6 +1,6 @@
 variable "aws_region" {
   description = "AWS region for deployment"
-  default     = "eu-west-1"
+  default     = "eu-central-1"
 }
 
 variable "project_name" {

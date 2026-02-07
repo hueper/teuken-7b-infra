@@ -7,7 +7,7 @@ if [ -n "$HF_TOKEN_SECRET_ARN" ]; then
     --secret-id "$HF_TOKEN_SECRET_ARN" \
     --query 'SecretString' \
     --output text \
-    --region "${AWS_REGION:-eu-west-1}")
+    --region "${AWS_REGION:-eu-central-1}")
 fi
 
 exec /usr/local/bin/text-generation-launcher \

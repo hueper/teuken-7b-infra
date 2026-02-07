@@ -96,7 +96,7 @@ terraform destroy
 |---|---|---|
 | `image_tag` | *(required)* | Container image tag (Git SHA from CI) |
 | `github_repo` | *(required)* | GitHub repository (org/repo) for OIDC trust |
-| `aws_region` | `eu-west-1` | AWS region |
+| `aws_region` | `eu-central-1` | AWS region |
 | `instance_type` | `ml.g5.2xlarge` | SageMaker GPU instance |
 | `enable_endpoint_scheduler` | `true` | Auto start/stop |
 | `endpoint_start_schedule` | `cron(0 7 ? * MON-FRI *)` | Start time (UTC) |
