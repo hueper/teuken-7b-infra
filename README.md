@@ -26,19 +26,22 @@ The SageMaker endpoint is **ephemeral** — intentionally created and deleted da
 ```bash
 cd terraform
 
-# 1. Build and push the inference container
+# 1. Provision base infrastructure (creates ECR repository)
+terraform init
+terraform apply -target=aws_ecr_repository.teuken_inference
+
+# 2. Build and push the inference container
 bash container/build.sh
 
-# 2. Provision infrastructure
-terraform init
+# 3. Provision remaining infrastructure
 terraform apply
 
-# 3. Set the HuggingFace token
+# 4. Set the HuggingFace token
 aws secretsmanager put-secret-value \
   --secret-id teuken-llm/hf-token \
   --secret-string "hf_YOUR_TOKEN"
 
-# 4. Bootstrap the endpoint (first time only — the scheduler handles it after this)
+# 5. Bootstrap the endpoint (first time only — the scheduler handles it after this)
 aws lambda invoke --function-name teuken-llm-start-endpoint --payload '{}' response.json
 ```
 
