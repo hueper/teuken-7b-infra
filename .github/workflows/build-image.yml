@@ -43,7 +43,6 @@ jobs:
           docker build \
             --platform=linux/amd64 \
             --build-arg BASE_IMAGE=$BASE_IMAGE \
-            --provenance=false \
             -t $REGISTRY/$REPO:$TAG \
             -f terraform/container/Dockerfile \
             terraform/container
