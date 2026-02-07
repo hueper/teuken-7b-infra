@@ -15,15 +15,8 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - name: Free disk space
-        run: |
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /usr/local/lib/android
-          sudo rm -rf /opt/ghc
-          sudo docker system prune -af
-
       - uses: actions/checkout@v4
 
       - uses: aws-actions/configure-aws-credentials@v4
