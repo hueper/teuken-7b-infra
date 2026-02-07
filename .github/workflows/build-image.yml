@@ -15,7 +15,7 @@ env:
 
 jobs:
   build-and-push:
-    runs-on: self-hosted
+    runs-on: [self-hosted, docker-heavy]
     steps:
       - uses: actions/checkout@v4
 
