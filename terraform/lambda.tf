@@ -114,7 +114,7 @@ resource "aws_lambda_function" "stop_endpoint" {
 
   environment {
     variables = {
-      ENDPOINT_NAME = aws_sagemaker_endpoint.teuken.name
+      ENDPOINT_NAME = local.endpoint_name
     }
   }
 
@@ -139,8 +139,8 @@ resource "aws_lambda_function" "start_endpoint" {
 
   environment {
     variables = {
-      ENDPOINT_NAME        = aws_sagemaker_endpoint.teuken.name
-      ENDPOINT_CONFIG_NAME = aws_sagemaker_endpoint_configuration.teuken.name
+      ENDPOINT_NAME        = local.endpoint_name
+      ENDPOINT_CONFIG_NAME = local.endpoint_config_name
     }
   }
 

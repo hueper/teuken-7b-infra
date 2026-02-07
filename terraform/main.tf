@@ -132,6 +132,15 @@ resource "aws_sagemaker_model" "teuken" {
   }
 }
 
+# The endpoint is intentionally ephemeral: created/deleted by the Lambda scheduler.
+# Terraform manages the endpoint configuration but NOT the endpoint itself.
+# BOOTSTRAP: After first `terraform apply`, create the endpoint by invoking:
+#   aws lambda invoke --function-name teuken-llm-start-endpoint --payload '{}' /dev/stdout
+locals {
+  endpoint_name        = "${var.project_name}-teuken-endpoint"
+  endpoint_config_name = aws_sagemaker_endpoint_configuration.teuken.name
+}
+
 # SageMaker Endpoint Configuration
 resource "aws_sagemaker_endpoint_configuration" "teuken" {
   name = "${var.project_name}-teuken-config"
@@ -145,15 +154,10 @@ resource "aws_sagemaker_endpoint_configuration" "teuken" {
   }
 }
 
-# SageMaker Endpoint
-resource "aws_sagemaker_endpoint" "teuken" {
-  name                 = "${var.project_name}-teuken-endpoint"
-  endpoint_config_name = aws_sagemaker_endpoint_configuration.teuken.name
-}
-
 # Outputs
 output "endpoint_name" {
-  value = aws_sagemaker_endpoint.teuken.name
+  description = "SageMaker endpoint name (lifecycle managed by Lambda scheduler, not Terraform)"
+  value       = local.endpoint_name
 }
 
 output "hf_token_secret_arn" {
