@@ -48,6 +48,16 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
         Resource = "*"
       },
       {
+        Sid    = "ECRPullHuggingFaceDLC"
+        Effect = "Allow"
+        Action = [
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage"
+        ]
+        Resource = "arn:aws:ecr:${var.aws_region}:763104351884:repository/*"
+      },
+      {
         Sid    = "ECRPush"
         Effect = "Allow"
         Action = [
