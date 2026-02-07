@@ -32,7 +32,7 @@ resource "aws_secretsmanager_secret" "hf_token" {
 
 resource "aws_ecr_repository" "teuken_inference" {
   name                 = "${var.project_name}-inference"
-  image_tag_mutability = "MUTABLE"
+  image_tag_mutability = "IMMUTABLE"
   force_delete         = true
 
   image_scanning_configuration {
@@ -120,7 +120,7 @@ resource "aws_sagemaker_model" "teuken" {
 
   primary_container {
     # Custom image that fetches HF_TOKEN from Secrets Manager at runtime
-    image = "${aws_ecr_repository.teuken_inference.repository_url}:latest"
+    image = "${aws_ecr_repository.teuken_inference.repository_url}:${var.image_tag}"
     environment = {
       HF_MODEL_ID              = "openGPT-X/Teuken-7B-instruct-v0.6"
       HF_TOKEN_SECRET_ARN      = aws_secretsmanager_secret.hf_token.arn

@@ -10,15 +10,18 @@ SageMaker Endpoint (ml.g5.2xlarge) ← Endpoint Config ← Model ← Custom TGI 
 Lambda scheduler (EventBridge cron)                          Secrets Manager (HF token)
   stop:  6 PM UTC Mon–Fri (delete endpoint)
   start: 7 AM UTC Mon–Fri (recreate endpoint)
+
+GitHub Actions (OIDC) → builds and pushes container image to ECR on merge to main
 ```
 
 The SageMaker endpoint is **ephemeral** — intentionally created and deleted daily by the Lambda scheduler to avoid idle costs (~$1.50/hr). It is not tracked in Terraform state. Everything else (model, endpoint config, ECR, IAM, Lambdas, EventBridge) is long-lived and Terraform-managed.
+
+Container images are built by CI and tagged with the Git SHA. Local Docker builds are not required.
 
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
 - Terraform >= 1.0
-- Docker (for building the inference container)
 - A [HuggingFace token](https://huggingface.co/settings/tokens) with access to the gated model
 
 ## Deploy
@@ -26,24 +29,32 @@ The SageMaker endpoint is **ephemeral** — intentionally created and deleted da
 ```bash
 cd terraform
 
-# 1. Provision base infrastructure (creates ECR repository)
+# 1. Provision base infrastructure (creates ECR, OIDC provider, CI role)
 terraform init
-terraform apply -target=aws_ecr_repository.teuken_inference
+terraform apply \
+  -target=aws_ecr_repository.teuken_inference \
+  -target=aws_iam_openid_connect_provider.github \
+  -target=aws_iam_role.github_actions \
+  -target=aws_iam_role_policy.github_actions_ecr
 
-# 2. Build and push the inference container
-bash container/build.sh
+# 2. Set AWS_ROLE_ARN secret in GitHub repo settings
+#    (value from: terraform output github_actions_role_arn)
 
-# 3. Provision remaining infrastructure
-terraform apply
+# 3. Push to main (or trigger workflow manually) to build the image
 
-# 4. Set the HuggingFace token
+# 4. Provision remaining infrastructure with the image tag from CI
+terraform apply -var="image_tag=<git-sha>"
+
+# 5. Set the HuggingFace token
 aws secretsmanager put-secret-value \
   --secret-id teuken-llm/hf-token \
   --secret-string "hf_YOUR_TOKEN"
 
-# 5. Bootstrap the endpoint (first time only — the scheduler handles it after this)
+# 6. Bootstrap the endpoint (first time only — the scheduler handles it after this)
 aws lambda invoke --function-name teuken-llm-start-endpoint --payload '{}' response.json
 ```
+
+> **Note:** The `-target` apply in step 1 is a one-time bootstrap to break the circular dependency (CI needs ECR + OIDC role to push, Terraform needs an image tag to create the model). After the first image is pushed, all subsequent deploys use a normal `terraform apply`.
 
 The endpoint takes ~10–15 minutes to reach `InService`.
 
@@ -51,11 +62,14 @@ The endpoint takes ~10–15 minutes to reach `InService`.
 
 ```
 infra/
+├── .github/workflows/
+│   └── build-image.yml  CI: build and push container image to ECR
 ├── terraform/
 │   ├── main.tf          Model, endpoint config, ECR, IAM, Secrets Manager
 │   ├── lambda.tf        Endpoint scheduler (Lambda + EventBridge)
+│   ├── ci.tf            GitHub OIDC provider + CI IAM role
 │   ├── variables.tf
-│   ├── container/       Custom TGI Docker image + build script
+│   ├── container/       Dockerfile + entrypoint for TGI inference
 │   └── lambda/          Start/stop Lambda handlers
 ```
 
@@ -80,6 +94,8 @@ terraform destroy
 
 | Variable | Default | Description |
 |---|---|---|
+| `image_tag` | *(required)* | Container image tag (Git SHA from CI) |
+| `github_repo` | *(required)* | GitHub repository (org/repo) for OIDC trust |
 | `aws_region` | `eu-west-1` | AWS region |
 | `instance_type` | `ml.g5.2xlarge` | SageMaker GPU instance |
 | `enable_endpoint_scheduler` | `true` | Auto start/stop |

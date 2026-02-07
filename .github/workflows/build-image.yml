@@ -1,0 +1,50 @@
+name: Build inference image
+
+on:
+  push:
+    branches: [main]
+    paths: [terraform/container/**]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      # Login to HuggingFace DLC registry for base image pull
+      - name: Login to HuggingFace ECR
+        run: |
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+            docker login --username AWS --password-stdin 763104351884.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+
+      - name: Build and push
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPO: teuken-llm-inference
+          TAG: ${{ github.sha }}
+          BASE_IMAGE: 763104351884.dkr.ecr.eu-west-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04
+        run: |
+          docker build \
+            --platform=linux/amd64 \
+            --build-arg BASE_IMAGE=$BASE_IMAGE \
+            --provenance=false \
+            -t $REGISTRY/$REPO:$TAG \
+            -f terraform/container/Dockerfile \
+            terraform/container
+          docker push $REGISTRY/$REPO:$TAG

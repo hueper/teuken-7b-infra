@@ -13,11 +13,15 @@ variable "instance_type" {
   default     = "ml.g5.2xlarge"
 }
 
-variable "huggingface_inference_image" {
-  description = "HuggingFace LLM TGI image URI (version 3.3.6)"
-  default     = "763104351884.dkr.ecr.eu-west-1.amazonaws.com/huggingface-pytorch-tgi-inference:2.7.0-tgi3.3.6-gpu-py311-cu124-ubuntu22.04"
+variable "image_tag" {
+  description = "Container image tag (set to Git SHA by CI)"
+  type        = string
 }
 
+variable "github_repo" {
+  description = "GitHub repository (org/repo) for OIDC trust policy"
+  type        = string
+}
 
 # Endpoint Scheduler Variables
 variable "enable_endpoint_scheduler" {
