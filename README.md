@@ -18,6 +18,17 @@ The SageMaker endpoint is **ephemeral** — intentionally created and deleted da
 
 Container images are built by CI and tagged with the Git SHA. Local Docker builds are not required.
 
+## CI Build Environment
+
+The container image is large (~30–40 GB unpacked).  
+Building it on GitHub-hosted runners may fail due to disk limits.
+
+In production, this repository is built using a **self-hosted GitHub Actions runner**
+(EC2 with large disk, long-lived CI infrastructure).
+
+If you encounter `no space left on device` errors in CI, switch the workflow to a
+self-hosted runner.
+
 ## Prerequisites
 
 - AWS CLI configured with appropriate credentials
